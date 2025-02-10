@@ -1,0 +1,65 @@
+# creating and storing values
+x = 1
+y = [1, 2, 3]
+
+# Functions
+# lambda syntax
+(lambda x: 2*x)(2)
+x = lambda a : a + 10
+x(5)
+
+# Named
+def addOne(x):
+    return x + 1
+print(addOne(1)) 
+
+
+// Methods
+def add(x, y):
+  return x + y
+add(2, 3)
+
+// map functions
+salaries = [20000, 70000, 40000]
+g = lambda x: 2*x
+doubled = list(map(g, salaries))	# notice use of map function
+
+def doubleIt(x):
+  return 2*x
+
+list(map(doubleIt, salaries))
+
+// Lists:
+list(map(lambda x: x.upper(), ['cat', 'dog', 'cow']))
+
+// filter operator
+num_list = [2,3,4,5,6]
+odd_num = list(filter(lambda x: x%2!=0 , num_list))
+odd_num
+
+// filter with named function
+def isOdd(x):
+  return bool(x%2) #bool is optional
+  
+list(map(isOdd, num_list)) 
+ 
+list(filter(isOdd, num_list))
+
+
+# List comprehension
+num_list = [2,3,4,5,6]
+sq_list = [x*x for x in num_list if x%2==0]
+sq_list
+
+
+
+  
+# Reduce operator
+from functools import reduce
+product = reduce((lambda x, y: x * y), [1, 2, 3, 4])
+
+Above command is equivalent to:
+product = 1
+list = [1, 2, 3, 4]
+for num in list:
+    product = product * num
