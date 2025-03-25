@@ -1,0 +1,69 @@
+# The following is a good resource for studying about pair-rdd
+# https://www.oreilly.com/library/view/learning-spark/9781449359034/ch04.html
+
+
+
+# Download the movielens dataset for "education and development" from this URL:
+# https://grouplens.org/datasets/movielens/
+
+
+ratings = sc.textFile("YOUR_PATH")
+movies = sc.textFile("YOUR_PATH")
+tags = sc.textFile("YOUR_PATH")
+
+
+moviesHeader = movies.first()
+ratingsHeader = ratings.first()
+tagsHeader = tags.first()
+
+ratingsData = ratings.filter(lambda x: x!= ratingsHeader).map(lambda x: ((x.split(","))[1], (x.split(","))[2]))
+moviesData = movies.filter(lambda x: x!= moviesHeader).map(lambda x: ((x.split(","))[0], (x.split(","))[1]))
+tagsData = tags.filter(lambda x: x!= tagsHeader).map(lambda x: ((x.split(","))[1], (x.split(","))[2]))
+
+
+
+// Which movie has the highest count of ratings
+1. sc.parallelize(ratingsData.countByKey().items()).sortBy(lambda x: -x[1])
+moviesData.filter(lambda x: x[0]=='356').collect()
+
+// Find the movie with the lowest count of ratings 
+2. counts = sc.parallelize(ratingsData.countByKey().items()).sortBy(lambda x: x[1])
+
+// Find the avg ratings for each movie
+3.
+avgRatings = ratingsData.mapValues(lambda x: (x, 1)).reduceByKey(lambda x, y: (float(x[0])+ float(y[0]), x[1]+ y[1])).mapValues(lambda x: float(x[0])/float(x[1]))
+
+
+// Find the movies with the highest avg rating
+4.
+sortedRatings = avgRatings.sortBy(lambda x: -x[1])
+
+
+// Find the movies with the lowest ratings
+5.
+sortedRatings = avgRatings.sortBy(lambda x: x[1])
+
+
+// Now join the movies and ratings tables, and give the names of the top 10 movies with the highest ratings
+6. val joined = sortedRatings.join(moviesData)
+
+# if you want only movies that have at least 100 ratings
+highCount = counts.filter(lambda x: x[1] > 100)
+highCountRatings = sortedRatings.join(moviesData).join(highCount)
+
+// Now join the movies and tags tables, and output the NAMES all movies with the tag 'mathematics'
+7. mathMovies = moviesData.join(tagsData).filter(lambda x: x[1][1] == "mathematics")
+
+// What is the average ratings of movies that contain the tag 'artificial intelligence'
+8. moviesData.join(tagsData).filter(lambda x: x[1][1] == "artificial intelligence").join(avgRatings)
+
+// What is the average rating of movies that have the tag 'Crime'
+9. 
+moviesData.join(tagsData).filter(lambda x: x[1][1] == "crime").join(avgRatings).collect()
+
+10. Which is the most popular tag?
+popularTags = tagsData.values().map(lambda x: (x, 1)).reduceByKey(lambda x, y: x + y).sortBy(lambda x: -x[1])
+
+
+
+

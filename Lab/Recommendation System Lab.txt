@@ -1,0 +1,47 @@
+Download file from: http://www.utdallas.edu/~axn112530/cs6350/spark/ratings-small.dat
+
+0. Import Libraries:
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.recommendation import ALS
+from pyspark.sql import Row
+
+1. Load file into dataframe
+ratings = spark.read.option("inferSchema","true").option("header","false").csv("PATH").toDF("userID", "movieID", "rating")
+
+2. Split into train and test parts:
+training, test = ratings.randomSplit([0.8, 0.2])
+
+3. Create ALS model:
+als = ALS(maxIter=5, regParam=0.01, userCol="userID", itemCol="movieID", ratingCol="rating", rank = 5,
+          coldStartStrategy="drop")
+
+model = als.fit(training)
+
+
+4. Apply model on test data:
+
+predictions = model.transform(test)
+
+5. Find the performance:
+
+
+evaluator = RegressionEvaluator(metricName="rmse", labelCol="rating",
+                                predictionCol="prediction")
+rmse = evaluator.evaluate(predictions)
+print("Root-mean-square error = " + str(rmse))
+
+
+# Generate top 10 movie recommendations for each user
+userRecs = model.recommendForAllUsers(10)
+# Generate top 10 user recommendations for each item
+movieRecs = model.recommendForAllItems(10)
+
+# Generate top 10 movie recommendations for a specified set of users
+users = ratings.select(als.getUserCol()).distinct().limit(3)
+userSubsetRecs = model.recommendForUserSubset(users, 10)
+# Generate top 10 user recommendations for a specified set of items
+movies = ratings.select(als.getItemCol()).distinct().limit(3)
+movieSubSetRecs = model.recommendForItemSubset(movies, 10)
+
+
+

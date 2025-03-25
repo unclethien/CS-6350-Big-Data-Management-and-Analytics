@@ -1,0 +1,26 @@
+from pyspark.ml.linalg import Vectors
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.clustering import KMeans
+from pyspark.ml.evaluation import ClusteringEvaluator
+
+
+// Download file from http://www.utdallas.edu/~axn112530/cs6350/data/crime_data.csv
+
+data = spark.read.option("header", "true").option("inferSchema", "true").csv(PATH)
+df = data.select("Murder", "Assault", "Robbery", "Drugs")
+assembler = VectorAssembler(inputCols = ["Murder","Assault", "Robbery", "Drugs"], outputCol = "features")
+fitted = assembler.transform(df)
+kmeans = KMeans().setK(2).setSeed(1)
+model = kmeans.fit(fitted)
+predictions = model.transform(fitted)
+# Make predictions
+evaluator = ClusteringEvaluator()
+
+silhouette = evaluator.evaluate(predictions)
+print("Silhouette with squared euclidean distance = " + str(silhouette))
+
+# Shows the result.
+centers = model.clusterCenters()
+print("Cluster Centers: ")
+for center in centers:
+    print(center)

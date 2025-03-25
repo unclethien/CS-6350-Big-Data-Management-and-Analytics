@@ -1,0 +1,102 @@
+# get data file from https://an-utd-course.s3-us-west-1.amazonaws.com/car-milage.csv
+
+df = spark.read.option("header","true").option("inferSchema","true").csv("PATH")
+from pyspark.ml.feature import FeatureHasher
+hasher =  FeatureHasher().setInputCols(["mpg","displacement","hp","torque","CRatio","RARatio","CarbBarrells","NoOfSpeed","length","width","weight"]).setOutputCol("features")
+transformed = hasher.transform(df)
+train, test = transformed.randomSplit([0.7, 0.3], seed = 2018)
+print("Training Dataset Count: " + str(train.count()))
+print("Test Dataset Count: " + str(test.count()))
+from pyspark.ml.classification import LogisticRegression
+lr = LogisticRegression(maxIter=10, regParam=0.3, elasticNetParam=0.8, featuresCol = "features", labelCol = "automatic")
+model = lr.fit(train)
+result = lrModel.transform(test)
+result.select("automatic","prediction").show()
+# let's evaluate accuracy
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+evaluator = MulticlassClassificationEvaluator(predictionCol = "prediction", labelCol = "automatic", metricName = "accuracy")
+accuracy = evaluator.evaluate(result)
+print(accuracy)
+# try other metricnames
+
+
+
+####################################################################
+
+
+# Download dataset from https://an-utd-python.s3.us-west-1.amazonaws.com/yelp_labelled.txt
+
+# Manually upload to Databricks and get its path
+df = spark.read.option("header","false").option("inferSchema","true").option("delimiter","\t").csv("PATH").toDF("text", "label")
+
+# Let's convert the text column to words
+from pyspark.ml.feature import Tokenizer, RegexTokenizer, FeatureHasher
+from pyspark.ml.feature import HashingTF, IDF, Tokenizer
+from pyspark.ml.feature import StopWordsRemover
+
+tokenizer = Tokenizer(inputCol="text", outputCol="words")
+wordsData = tokenizer.transform(df)
+
+remover = StopWordsRemover(inputCol="words", outputCol="filtered")
+stopWordRemoved = remover.transform(wordsData)
+
+# see link https://spark.apache.org/docs/latest/ml-features.html#feature-extractors
+# raw data to feature vectors
+hashingTF = HashingTF(inputCol="words", outputCol="rawFeatures", numFeatures=20)
+featurizedData = hashingTF.transform(stopWordRemoved)
+
+# IDF is an Estimator which is fit on a dataset and produces an IDFModel. The IDFModel takes feature vectors (generally created from HashingTF or CountVectorizer) and scales each feature. 
+# Intuitively, it down-weights features which appear frequently in a corpus.
+
+idf = IDF(inputCol="rawFeatures", outputCol="features")
+idfModel = idf.fit(featurizedData)
+rescaledData = idfModel.transform(featurizedData)
+rescaledData.select("label", "features").show()
+
+# create a logistic regression model
+from pyspark.ml.classification import LogisticRegression
+train, test = rescaledData.randomSplit([0.9, 0.1], seed = 2018)
+lr = LogisticRegression(regParam=0.3, elasticNetParam=0.8, maxIter = 1000)
+model = lr.fit(train)
+result = model.transform(test)
+
+
+# let's evaluate the classification
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator 
+evaluator = MulticlassClassificationEvaluator(metricName = "accuracy")
+accuracy = evaluator.evaluate(result)
+print(accuracy)
+
+
+
+#-----------car dataset regression---------------#
+
+// Download the car mileage dataset from https://an-utd-course.s3-us-west-1.amazonaws.com/car-milage.csv
+
+from pyspark.ml.regression import LinearRegression
+from pyspark.ml.linalg import Vectors
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.evaluation import RegressionEvaluator
+
+
+cars = spark.read.option("header","true"). option("inferSchema","true").csv(PATH)
+cars1 = cars.na.drop() 
+assembler = VectorAssembler(inputCols=["displacement","hp","torque","CRatio","RARatio","CarbBarrells","NoOfSpeed","length","width","weight","automatic"], outputCol="features")
+cars2 = assembler.transform(cars1)
+train, test = cars2.randomSplit([0.9, 0.1], seed = 2018)
+lr = LinearRegression(maxIter=10, regParam=0.3, elasticNetParam=0.8, labelCol = "mpg")
+lrModel = lr.fit(train)
+
+# Evaluation
+print("Coefficients: %s" % str(lrModel.coefficients))
+print("Intercept: %s" % str(lrModel.intercept))
+
+# Summarize the model over the training set and print out some metrics
+trainingSummary = lrModel.summary
+print("numIterations: %d" % trainingSummary.totalIterations)
+print("objectiveHistory: %s" % str(trainingSummary.objectiveHistory))
+trainingSummary.residuals.show()
+print("RMSE: %f" % trainingSummary.rootMeanSquaredError)
+print("r2: %f" % trainingSummary.r2)
+
+

@@ -1,0 +1,62 @@
+import sys.process._
+# download any large book from gutenberg.org
+input = sc.textFile("Your Path") # input
+words = input.flatMap(lambda x: x.split(" ")).map(lambda x: x.lower())
+longWords = words.filter(lambda x: len(x) > 5)
+wordPairs = longWords.map(lambda x: (x, 1))
+wordCounts = wordPairs.reduceByKey(lambda x,y: x + y).sortBy(lambda x: -x[1])
+wordCounts.saveAsTextFile("nameOfOutFile")
+
+
+# More examples on key, value pairs
+kv = [(1, 2), (3, 4), (3, 6)]
+rdd = sc.parallelize(kv)
+rdd.reduceByKey(lambda x, y: x + y)
+rdd.groupByKey().map(lambda x : (x[0], list(x[1])))
+# sort by key
+rdd.sortByKey()
+
+
+# sort by value
+rdd.sortBy(lambda x: x[1])
+# get just the keys
+rdd.keys()
+# get just the values
+rdd.values()
+
+
+# let's download entire Wikipedia
+# let's download entire Wikipedia
+# from https://www.corpusdata.org
+# and then overview from top menu
+
+wiki = sc.textFile("PATH")
+words = wiki.flatMap(lambda x: x.split(" ")).filter(lambda x: len(x) > 0)
+longWords = words.filter(lambda x: len(x) > 5)
+
+longWords.distinct()
+wordLengthPairs = longWords.map(lambda x: (x, 1))
+lengthCounts = wordLengthPairs.reduceByKey(lambda x, y: x+y)
+# sort by count
+sortedLengthCounts = lengthCounts.sortBy(lambda x: -x[1])
+
+
+
+
+## find average length of words that start with z
+zWords = words.map(lambda x: x.lower()).filter(lambda x: x[0] == 'z')
+zWordLengths = zWords.map(lambda x: len(x))
+zWordLengths.mean()
+
+
+# how can we do this for all words
+
+wordLengthPairs = words.map(lambda x: x.lower()).filter(lambda x: x[0].isalpha())
+wordLengthSum = wordLengthPairs.map(lambda x: (x[0], len(x))).reduceByKey(lambda x, y: x + y)
+wordLengthCount = wordLengthPairs.map(lambda x: (x[0], 1)).reduceByKey(lambda x, y: x + y)
+joined = wordLengthSum.join(wordLengthCount)
+wordCountsAvg = joined.map(lambda x: (x[0], x[1][0]/x[1][1])).sortBy(lambda x: x[0])
+
+
+
+
