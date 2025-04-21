@@ -1,0 +1,77 @@
+1. Go to https://transtats.bts.gov/
+2. On the left menu, click under "Aviation" under the "By Mode" block.
+3. On the next page, click Air Carrier Statistics (Form 41 Traffic)- U.S. Carriers
+4. On the next page, click download link under T-100 Domestic Segment (U.S. Carriers)
+5. On the next page, set Filter Year = Most Recent Year, Filter Period = Any month on which data is available (e.g. July), and select following fields:
+- OriginAirportID
+- Origin
+- DestAirportID
+- Dest
+
+6. Download and unzip to get a csv file.
+
+
+# Databricks notebook source
+# Make sure Graphframes dependency is available AND VERSION IS COMPATIBLE
+
+
+flights = spark.read.option("header","true").csv("path.csv")
+
+// COMMAND ----------
+
+flights.show()
+
+// COMMAND ----------
+
+airports = flights.select("ORIGIN_AIRPORT_ID", "ORIGIN").toDF("id","name").distinct()
+
+// COMMAND ----------
+
+airportEdges = flights.select("ORIGIN", "DEST").toDF("src","dst")
+
+// COMMAND ----------
+
+airportEdges.show()
+
+# COMMAND ----------
+
+from graphframes import GraphFrame
+
+airportGraph = GraphFrame(airports, airportEdges)
+
+airportGraph.cache()
+
+# COMMAND ----------
+
+
+print "Total Number of Stations: " + str(airportGraph.vertices.count())
+print "Total Number of Trips in Graph: " + str(airportGraph.edges.count())
+print "Total Number of Trips in Original Data: " + str(airportEdges.count())
+
+
+# Flights from DFW 
+
+from pyspark.sql.functions import desc
+airportGraph.edges
+  .where("src = 'DFW'")
+  .groupBy("dst").count().orderBy(desc("count")).show()
+
+
+
+# find indegrees and outdegrees
+
+inDeg = airportGraph.inDegrees
+inDeg.orderBy(desc("inDegree")).show(5, truncate = False)
+
+
+# COMMAND ----------
+
+outDeg = airportGraph.outDegrees
+outDeg.orderBy(desc("outDegree")).show(5, truncate = False)
+
+# COMMAND ----------
+
+ranks = airportGraph.pageRank(resetProbability=0.15, maxIter=10)
+ranks.vertices.orderBy(desc("pagerank")).select("id", "pagerank").show(10)
+
+
