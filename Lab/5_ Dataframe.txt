@@ -1,0 +1,65 @@
+Download the movielens dataset for "education and development" from this URL:
+https://grouplens.org/datasets/movielens/
+
+Upload it to Databricks using either wget command or manually uploading.
+
+Read the files into different RDDs.
+
+Answer the following questions:
+
+
+
+movies = spark.read.option("header","true").option("inferSchema","true").csv("YOUR_PATH.csv")
+ratings = spark.read.option("header","true").option("inferSchema","true").csv("YOUR_PATH.csv")
+tags = spark.read.option("header","true").option("inferSchema","true").csv("YOUR_PATH.csv")
+
+
+// Which movie has the highest count of ratings
+1. 
+from pyspark.sql.functions import count, desc
+ratings.groupBy("movieId").count().orderBy(desc("count"))
+
+// Find the movie with the lowest count of ratings 
+2. 
+ratings.groupBy("movieId").count().orderBy("count")
+
+// Find the avg ratings for each movie
+3.
+avgRatings = ratings.groupBy("movieId").avg("rating")
+
+// Find the movies with the highest avg rating
+4.
+ratings.groupBy("movieId").avg("rating").toDF("movieId", "avgRating").orderBy(desc("avgRating"))
+
+// Find the movies with the lowest avg ratings
+5.
+ratings.groupBy("movieId").avg("rating").toDF("movieId", "avgRating").orderBy("avgRating")
+
+
+// Now join the movies and ratings tables, and give the names of the top 10 movies with the highest ratings
+6. 
+avgRatings = ratings.groupBy("movieId").avg("rating").toDF("movieId", "avgRating").orderBy(desc("avgRating"))
+avgRatings.join(movies, "movieId").orderBy(desc("avgRating")).show()
+
+// Now join the movies and tags tables, and output the NAMES all movies with the tag 'mathematics'
+7. 
+tagMovies = tags.join(movies, "movieId")
+tagMovies.filter("tag like 'math%'").show()`
+
+// What is the average ratings of movies that contain the tag 'artificial intelligence'
+8. 
+
+tagMovies.filter("tag like 'artificial intell%'").join(avgRatings, "movieId").show()
+
+// What is the average rating of movies that have the genre 'Crime'
+9. 
+crimMovies = movies.filter("genres like '%Crim%'").show()
+crimMovies.join(avgRatings, "movieId").show()
+
+
+10. Which is the most popular tag?
+tags.groupBy("tag").count().orderBy(desc("count")).show()
+
+
+
+
