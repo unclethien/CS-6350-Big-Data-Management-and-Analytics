@@ -1,2 +1,16 @@
 # Environment variables
 .env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Spark/Data Volumes (if mounted locally and shouldn't be committed)
+/data/
+/esdata/
+
+# Other common ignores
+.DS_Store
+*.log
