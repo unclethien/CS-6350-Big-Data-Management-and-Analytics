@@ -1,6 +1,8 @@
-kafka-python>=2.0.0
-newsapi-python>=0.2.7
-# Add other dependencies as needed for the full project
+newsapi-python
+kafka-python
+# Add other dependencies below as needed
+pandas
+matplotlib
 # For Spark Streaming part, you'll need pyspark
 pyspark>=3.1.0 # Specify a version, e.g., 3.1.0 or higher
 # For NER, you might need spacy or nltk
