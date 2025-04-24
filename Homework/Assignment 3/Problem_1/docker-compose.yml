@@ -1,0 +1,143 @@
+version: '3.8'
+
+networks:
+  spark-kafka-elk-net:
+    driver: bridge
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.2
+    container_name: zookeeper
+    networks:
+      - spark-kafka-elk-net
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.2
+    container_name: kafka
+    networks:
+      - spark-kafka-elk-net
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092" # External access if needed outside docker network
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  spark-master:
+    build: ./spark
+    container_name: spark-master
+    networks:
+      - spark-kafka-elk-net
+    ports:
+      - "8080:8080" # Spark Master Web UI
+      - "7077:7077" # Spark Master Port
+    volumes:
+      - ./data/spark/master:/bitnami/spark/data # Persist master data (optional)
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    command: >
+      bash -c "/opt/bitnami/spark/sbin/start-master.sh &&
+               pip install -r /opt/bitnami/spark/app/requirements.txt &&
+               python -m spacy download en_core_web_sm && # Download spaCy model
+               tail -f /dev/null" # Keep container running
+
+  spark-worker:
+    build: ./spark
+    container_name: spark-worker
+    networks:
+      - spark-kafka-elk-net
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081" # Spark Worker Web UI
+    volumes:
+      - ./data/spark/worker:/bitnami/spark/data # Persist worker data (optional)
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    command: >
+      bash -c "pip install -r /opt/bitnami/spark/app/requirements.txt &&
+               python -m spacy download en_core_web_sm &&
+               /opt/bitnami/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+               tail -f /dev/null"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
+    container_name: elasticsearch
+    networks:
+      - spark-kafka-elk-net
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false # Disable security for simplicity
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m # Adjust memory as needed
+    ulimits: # Required for Elasticsearch
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.2
+    container_name: kibana
+    networks:
+      - spark-kafka-elk-net
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+      SERVER_NAME: kibana.example.org # Optional: helps Kibana identify itself
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.2
+    container_name: logstash
+    networks:
+      - spark-kafka-elk-net
+    ports:
+      - "5044:5044" # Beats input (optional)
+      - "9600:9600" # Monitoring API (optional)
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro # Mount pipeline config
+    depends_on:
+      - elasticsearch
+      - kafka
+    environment:
+      LS_JAVA_OPTS: "-Xms256m -Xmx256m" # Adjust memory as needed
+    command: logstash -f /usr/share/logstash/pipeline/pipeline.conf
+
+volumes:
+  esdata:
+    driver: local

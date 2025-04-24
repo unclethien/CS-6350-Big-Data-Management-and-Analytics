@@ -1,0 +1,6 @@
+kafka-python-ng # Use kafka-python-ng for better compatibility sometimes
+newsapi-python
+spacy>=3.0.0,<4.0.0 # Specify spacy version compatible with model
+# Note: pyspark is provided by the Spark Docker image, no need to list it here
+findspark # Need this for consumer.py when running locally for testing, but not strictly needed for docker exec
+python-dotenv # To load .env file for API key
