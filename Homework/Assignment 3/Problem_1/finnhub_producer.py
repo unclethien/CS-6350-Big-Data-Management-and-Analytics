@@ -1,13 +1,14 @@
 import os, time, json, sys
 import finnhub
 from kafka import KafkaProducer
+from datetime import datetime, timedelta
 
 # Load configuration from environment
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
 KAFKA_SERVER = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 NEWS_TOPIC = os.getenv("NEWS_TOPIC", "news_raw")
 
-print(f"Using Finnhub API key: {FINNHUB_API_KEY[:5]}...")
+print(f"Using Finnhub API key: {FINNHUB_API_KEY[:5] if FINNHUB_API_KEY else 'None'}...")
 print(f"Using Kafka server: {KAFKA_SERVER}")
 print(f"Using News topic: {NEWS_TOPIC}")
 
@@ -43,28 +44,27 @@ except Exception as e:
     print(f"Error testing Finnhub API: {e}")
     # Continue anyway, the main loop will retry
 
+# Set to store already seen news IDs to avoid duplicates
+seen_news_ids = set()
+
 while True:
+    # Calculate dates dynamically within the loop for a rolling window
+    today = datetime.now()
+    yesterday = today - timedelta(days=1) # Fetch news from the last day
+    today_str = today.strftime('%Y-%m-%d')
+    yesterday_str = yesterday.strftime('%Y-%m-%d')
+    
+    news_list = []
+    
+    # Use general_news instead of company_news
     try:
-        print("Attempting to fetch news...")
-        # Try different approaches to fetch news
-        try:
-            # Approach 1: General news
-            news_list = finnhub_client.general_news('general', min_id=last_id)
-            print(f"Fetched {len(news_list)} news items using general_news")
-        except Exception as e1:
-            print(f"Error with general_news: {e1}")
-            try:
-                # Approach 2: Market news
-                news_list = finnhub_client.market_news('general')
-                print(f"Fetched {len(news_list)} news items using market_news")
-            except Exception as e2:
-                print(f"Error with market_news: {e2}")
-                # Approach 3: Company news (for a popular stock)
-                news_list = finnhub_client.company_news('AAPL', _from="2023-01-01", to="2023-12-31")
-                print(f"Fetched {len(news_list)} news items using company_news")
+        print("Attempting to fetch general market news...")
+        # Fetch general news (no date parameter needed for general_news)
+        news_list = finnhub_client.general_news('general')
+        print(f"Fetched {len(news_list)} general news items")
     except Exception as e:
-        print(f"Error fetching news (all methods): {e}")
-        time.sleep(10)
+        print(f"Error with general_news: {e}")
+        time.sleep(5)
         continue
 
     if news_list:
@@ -75,14 +75,27 @@ while True:
         except Exception as e:
             print(f"Error sorting news: {e}")
             # Continue with unsorted list
-            pass
+            
+        # Track how many new items we process
+        new_items_count = 0
             
         for item in news_list:
             try:
                 news_id = item.get('id', 'unknown-' + str(time.time()))
+                
+                # Skip if we've already seen this news ID
+                if news_id in seen_news_ids:
+                    print(f"Skipping already processed news ID {news_id}")
+                    continue
+                    
+                # Add to seen IDs set
+                seen_news_ids.add(news_id)
+                new_items_count += 1
+                
                 # Update last_id to the highest ID seen so far if it's a numeric ID
                 if isinstance(news_id, (int, float)) and news_id > last_id:
                     last_id = news_id
+                    
                 # Prepare the data payload (select fields of interest)
                 payload = {
                     "id": news_id,
@@ -97,6 +110,8 @@ while True:
             except Exception as e:
                 print(f"Error processing news item: {e}")
                 continue
+                
+        print(f"Processed {new_items_count} new news items (skipped {len(news_list) - new_items_count} duplicates)")
         
         try:
             producer.flush()
