@@ -1,0 +1,96 @@
+1. Get the sample datasets from the MongoDB Atlas
+ 
+2. 
+
+We will be using the sample_airbnb for the first set of queries:
+
+3. Find out how many documents are there in the listingsAndReviews collection:
+db.listingsAndReviews.count()
+
+4. Display the first listing in the collection:
+db.listingsAndReviews.findOne()
+
+5. Find all the listings where the property_type is House
+db.listingsAndReviews.find( {property_type: "House"} )
+
+
+5. Find all the listings where the property_type is House and bed_type is Real Bed
+
+db.listingsAndReviews.find( {  property_type: "House", bed_type: "Real Bed" } )
+
+Find the listings that are located in the United States
+
+db.listingsAndReviews.find( { "address.country":  "United States"  } )
+
+6. Find how many distinct countries are present in the collection:
+
+db.listingsAndReviews.distinct( "address.country")
+
+6. Display just the listings where address.market is New York and price is less than 500
+
+db.listingsAndReviews.find({"address.market": "New York","price": {$lt: 500} })
+
+7. Find out the listings where any of the review comments contains the word "bedbug"
+
+db.listingsAndReviews.find({"reviews.comments":{$regex: /bedbug/i}})
+
+Now modify the above query to return only the following fields: reviews.comments, address.location, address.market, address.country
+
+db.listingsAndReviews.find({"reviews.comments":{$regex: /bedbug/i}},{"reviews.comments": 1, "address.location":1, "address.market":1, "address.country":1})
+
+
+8. Find the count of listings grouped by country
+
+   
+db.listingsAndReviews.aggregate(
+   [
+     { $group: { "_id": "$address.country", "count": { $sum: 1 } } }
+   ]
+);
+
+
+9. Find the average review scores.review_scores_rating grouped by each country
+
+   
+db.listingsAndReviews.aggregate(
+   [
+       
+     { $group: { "_id": "$address.country", "avgRating": { $avg: "$review_scores.review_scores_rating" } } }
+   ]
+);
+
+10. From the listings that match following criteria: description should contain 'new york city' and amenities should contain 'kitchen', find the count of each property type.
+
+db.listingsAndReviews.aggregate(
+   [
+     { $match: { "description":{$regex: /new york city/i}, "amenities":{$regex: /kitchen/i} } },
+     { $group: { "_id": "$property_type" , "count": { $sum: 1 } } }
+   ]
+);
+
+
+11. Insert the orders records and find the total amount grouped by customer id.
+
+db.orders.insert({cust_id: "A123", amount: 500, status: "A"})
+db.orders.insert({cust_id: "A123", amount: 250, status: "A"})
+db.orders.insert({cust_id: "B212", amount: 200, status: "A"})
+db.orders.insert({cust_id: "A123", amount: 300, status: "D"})
+
+db.orders.mapReduce( 
+					function() { emit(this.cust_id, this.amount); }, 
+					function(key, values) { return Array.sum(values)}, 
+					{	query: {status: "A"}, 
+						out: "order_totals"
+					}
+					).find()
+					
+12. Run mapreduce on the restaurants dataset to return number of restaurants grouped by cuisine in the Manhattan borough
+
+db.restaurants.mapReduce( 
+					function() { emit(this.cuisine, 1); }, 
+					function(key, values) { return Array.sum(values)}, 
+					{	query: {borough: "Manhattan"}, 
+						out: "cusine_totals"
+					}
+					).find()
+

@@ -1,0 +1,152 @@
+See help and documentation at http://hbase.apache.org/book.html#shell
+
+0. sudo hbase shell
+
+1. create a table called customer with two column families - "addr" and "order"
+create 'customer', {NAME=>'addr'}, {NAME=>'order'}
+describe 'customer'
+
+2. Create a record in this table for the user "jsmith" (this is the row id), and a column called "city" within the column family "addr" and a value of "Nashville"
+put 'customer', 'jsmith', 'addr:city', 'nashville'
+get 'customer', 'jsmith'
+
+3. Now, change the order column famili so that you can see previous 5 timestamps.
+alter 'customer' , NAME => 'order', VERSIONS => 5
+describe 'customer'
+
+4. Input more data into the table and make sure you can see it using Hue
+put   'customer',  'jsmith',  'order:numb', '1235'
+put   'customer',  'jsmith',  'order:numb', '1236'
+put   'customer',  'jsmith',  'order:numb', '1237'
+put   'customer',  'jsmith',  'order:numb', '1238'
+put   'customer',  'njones',  'addr:city', 'miami'
+put   'customer',  'njones',  'addr:state', 'FL'
+put   'customer',  'njones',  'order:numb', '5555'
+put   'customer',  'tsimmons',  'addr:city', 'dallas'
+put   'customer',  'tsimmons',  'addr:state', 'TX'
+put   'customer',  'jsmith',  'addr:city', 'denver'
+put   'customer',  'jsmith',  'addr:state', 'CO'
+put   'customer',  'jsmith',  'order:numb', '6666'
+put   'customer',  'njones',  'addr:state', 'TX'
+put   'customer',  'amiller', 'addr:state', 'TX'
+
+
+4. Get the data for row id 'jsmith', and check the column families 'addr' and 'order'. 
+Display all 
+get 'customer', 'jsmith', {COLUMNS=>['addr']}
+get 'customer', 'jsmith', {COLUMNS=>['order:numb']}
+
+//get 'customer', 'jsmith', {COLUMNS=>['order:numb']}
+get 'customer', 'jsmith', {COLUMNS=>['order:numb'], VERSIONS => 5}
+
+
+5. Display all the data in the customer table
+
+scan 'customer'
+scan 'customer', {COLUMNS=>['addr']}
+
+scan 'customer', {COLUMNS=>['order:numb'], VERSIONS => 5}
+
+6. Display the details for user 'njones' and then for all those users where the name starts with 't'
+get 'customer', 'njones'
+scan 'customer', { STARTROW => 't'}
+
+
+----------------
+
+7. create tables
+create 'students','account','address'
+create 'clicks','clickinfo','iteminfo'
+
+8. add data
+put 'students','student1','account:name','Alice'
+put 'students','student1','address:street','123 Ballmer Av'
+put 'students','student1','address:zipcode','12345'
+put 'students','student1','address:state','CA'
+put 'students','student2','account:name','Bob'
+put 'students','student2','address:street','1 Infinite Loop'
+put 'students','student2','address:zipcode','12345'
+put 'students','student2','address:state','CA'
+put 'students','student3','account:name','Frank'
+put 'students','student3','address:street','435 Walker Ct'
+put 'students','student3','address:zipcode','12345'
+put 'students','student3','address:state','CA'
+put 'students','student4','account:name','Mary'
+put 'students','student4','address:street','56 Southern Pkwy'
+put 'students','student4','address:zipcode','12345'
+put 'students','student4','address:state','CA'
+put 'clicks','click1','clickinfo:studentid','student1'
+put 'clicks','click1','clickinfo:url','http://www.google.com'
+put 'clicks','click1','clickinfo:time','2014-01-01 12:01:01.0001'
+put 'clicks','click1','iteminfo:itemtype','image'
+put 'clicks','click1','iteminfo:quantity','1'
+put 'clicks','click2','clickinfo:studentid','student1'
+put 'clicks','click2','clickinfo:url','http://www.amazon.com'
+put 'clicks','click2','clickinfo:time','2014-01-01 01:01:01.0001'
+put 'clicks','click2','iteminfo:itemtype','image'
+put 'clicks','click2','iteminfo:quantity','1'
+put 'clicks','click3','clickinfo:studentid','student2'
+put 'clicks','click3','clickinfo:url','http://www.google.com'
+put 'clicks','click3','clickinfo:time','2014-01-01 01:02:01.0001'
+put 'clicks','click3','iteminfo:itemtype','text'
+put 'clicks','click3','iteminfo:quantity','2'
+put 'clicks','click4','clickinfo:studentid','student2'
+put 'clicks','click4','clickinfo:url','http://www.ask.com'
+put 'clicks','click4','clickinfo:time','2013-02-01 12:01:01.0001'
+put 'clicks','click4','iteminfo:itemtype','text'
+put 'clicks','click4','iteminfo:quantity','5'
+put 'clicks','click5','clickinfo:studentid','student2'
+put 'clicks','click5','clickinfo:url','http://www.reuters.com'
+put 'clicks','click5','clickinfo:time','2013-02-01 12:01:01.0001'
+put 'clicks','click5','iteminfo:itemtype','text'
+put 'clicks','click5','iteminfo:quantity','100'
+put 'clicks','click6','clickinfo:studentid','student3'
+put 'clicks','click6','clickinfo:url','http://www.google.com'
+put 'clicks','click6','clickinfo:time','2013-02-01 12:01:01.0001'
+put 'clicks','click6','iteminfo:itemtype','image'
+put 'clicks','click6','iteminfo:quantity','1'
+put 'clicks','click7','clickinfo:studentid','student3'
+put 'clicks','click7','clickinfo:url','http://www.ask.com'
+put 'clicks','click7','clickinfo:time','2013-02-01 12:45:01.0001'
+put 'clicks','click7','iteminfo:itemtype','image'
+put 'clicks','click7','iteminfo:quantity','10'
+put 'clicks','click8','clickinfo:studentid','student4'
+put 'clicks','click8','clickinfo:url','http://www.amazon.com'
+put 'clicks','click8','clickinfo:time','2013-02-01 22:01:01.0001'
+put 'clicks','click8','iteminfo:itemtype','image'
+put 'clicks','click8','iteminfo:quantity','1'
+put 'clicks','click9','clickinfo:studentid','student4'
+put 'clicks','click9','clickinfo:url','http://www.amazon.com'
+put 'clicks','click9','clickinfo:time','2013-02-01 22:01:01.0001'
+put 'clicks','click9','iteminfo:itemtype','image'
+put 'clicks','click9','iteminfo:quantity','10'
+
+
+9. Get all the table data and also count the number of rows in each table
+
+scan 'clicks'
+count 'clicks'
+count 'students'
+
+
+10. get data for row 'click1'
+get 'clicks', 'click1'
+
+11. list all tables in your db
+list
+
+
+12. Get past 4 versions of rowid = 'click1', column family = 'iteminfo' and family = 'clickinfo'
+get 'clicks', 'click1', {COLUMN => ['iteminfo','clickinfo'], VERSIONS => 4}
+
+
+13. Create a table using Hbase shell as follows:
+create 'excite', 'colfam1'
+
+14. Upload the excite-small.log file from the following location: http://www.utdallas.edu/~axn112530/cs6350/hbaseData/excite-small.log
+to HDFS
+
+See https://cwiki.apache.org/confluence/display/Hive/HBaseIntegration#HBaseIntegration-HiveHBaseIntegration for more details
+
+
+
